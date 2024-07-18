@@ -1,23 +1,32 @@
 ﻿using CodigoFacilito.entities;
-using System.Globalization;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace CodigoFacilito.services
 {
     public static class BooksService
     {
-        public static List<Book> books = new List<Book>();
+        private const string JsonFilePath = @"C:\C\BOOKS.JSON";
+        private static List<Book> books = new List<Book>();
 
         public static string AddBook()
         {
             Console.WriteLine("Agregar Libro");
             Console.WriteLine("Ingrese el titulo del libro");
-            string title = Console.ReadLine();
+            string? title = Console.ReadLine();
             Console.WriteLine("Ingrese el autor del libro");
-            string author = Console.ReadLine();
+            string? author = Console.ReadLine();
             Console.WriteLine("Ingrese la categoria del libro");
-            string category = Console.ReadLine();
+            string? category = Console.ReadLine();
 
-            var book = new Book
+            // Cargar libros existentes del archivo
+            LoadBooks();
+
+            // Crear el nuevo objeto Book
+            var newBook = new Book
             {
                 Id = books.Count + 1,
                 Title = title,
@@ -26,57 +35,150 @@ namespace CodigoFacilito.services
                 IsAvaliable = true
             };
 
-            books.Add(book);
+            // Agregar el nuevo libro a la lista
+            books.Add(newBook);
 
-            return $"El libro {book.Title} ha sido agregado correctamente";
+            // Guardar la lista actualizada de libros en el archivo JSON
+            SaveBooks();
+
+            return $"El libro '{newBook.Title}' ha sido agregado correctamente";
         }
 
         public static string UpdateBook()
         {
             Console.WriteLine("Actualizar Libro");
-            Console.WriteLine("Ingrese el ID  del libro");
-            int id = Convert.ToInt16(Console.ReadLine());
-            var book = books.FirstOrDefault(x => x.Id == id);
+            Console.WriteLine("Ingrese el ID del libro a actualizar:");
+            int id = Convert.ToInt32(Console.ReadLine());
 
-            if(book == null)
+            // Cargar libros existentes del archivo
+            LoadBooks();
+
+            // Buscar el libro por ID
+            var bookToUpdate = books.FirstOrDefault(b => b.Id == id);
+
+            if (bookToUpdate == null)
             {
-                return $"El libro con ID {id} no existe";
-            }
-            else
-            {
-                Console.WriteLine("Ingrese el nuevo titulo del libro");
-                string title = Console.ReadLine();
-                Console.WriteLine("Ingrese el nuevo autor del libro");
-                string author = Console.ReadLine();
-                Console.WriteLine("Ingrese la nueva categoria del libro");
-                string category = Console.ReadLine();
-
-                book.Title = title;
-                book.Author = author;
-                book.Category = category;
-
-                books.Add(book);
+                return $"No se encontró ningún libro con el ID {id}";
             }
 
-            return $"El libro con el ID {book.Id} ha sido actualizado correctamente";
+            Console.WriteLine($"Libro encontrado: {bookToUpdate.Title} por {bookToUpdate.Author}");
+            Console.WriteLine("Ingrese el nuevo titulo del libro");
+            string title = Console.ReadLine();
+            Console.WriteLine("Ingrese el nuevo autor del libro");
+            string author = Console.ReadLine();
+            Console.WriteLine("Ingrese la nueva categoria del libro");
+            string category = Console.ReadLine();
+
+            // Actualizar el libro encontrado
+            bookToUpdate.Title = title;
+            bookToUpdate.Author = author;
+            bookToUpdate.Category = category;
+
+            // Guardar la lista actualizada de libros en el archivo JSON
+            SaveBooks();
+
+            return $"El libro con ID {id} ha sido actualizado correctamente";
         }
 
         public static string GetAll()
         {
-            string message = string.Empty;
-            Console.WriteLine("Listado de Libros");
+            // Cargar libros existentes del archivo
+            LoadBooks();
 
-            if(books == null)
+            if (books.Any())
             {
-                message = "No hay libros disponibles";
+                Console.WriteLine("Listado de libros:");
+                foreach (var book in books)
+                {
+                    Console.WriteLine($"|ID: {book.Id}, |Titulo: {book.Title}, |Autor: {book.Author}, |Categoria: {book.Category}");
+                }
             }
-            foreach (var book in books)
+            else
             {
-                message = $"ID: {book.Id} \nTitulo: {book.Title} \nAutor: {book.Author} \nCategoria: {book.Category} \nDisponible: {book.IsAvaliable}";
-
+                Console.WriteLine("No se encontraron libros.");
             }
 
-            return message;
+            return "";
+        }
+
+        private static void LoadBooks()
+        {
+            // verifica si el objeto JSON existe en la ruta indicada
+            if (File.Exists(JsonFilePath))
+            {
+                // lee el archivo JSON como un archivo de texto
+                string json = File.ReadAllText(JsonFilePath);
+
+                try
+                {
+                    // Intenta deserializar como una lista de libros
+                    books = JsonConvert.DeserializeObject<List<Book>>(json);
+                }
+                catch (JsonSerializationException ex)
+                {
+                    // Si hay un error, intenta deserializar como un solo objeto Book
+                    try
+                    {
+                        Book singleBook = JsonConvert.DeserializeObject<Book>(json);
+                        if (singleBook != null)
+                        {
+                            books = new List<Book> { singleBook };
+                        }
+                        else
+                        {
+                            books = new List<Book>();
+                        }
+                    }
+                    catch (JsonSerializationException innerEx)
+                    {
+                        Console.WriteLine($"Error al deserializar el archivo JSON como lista de libros: {ex.Message}");
+                        Console.WriteLine($"Error al deserializar el archivo JSON como un solo libro: {innerEx.Message}");
+                        books = new List<Book>();
+                    }
+                }
+            }
+            else
+            {
+                books = new List<Book>();
+            }
+        }
+        public static string DeleteBook()
+        {
+            Console.WriteLine("Eliminar Libro");
+            Console.WriteLine("Ingrese el ID del libro a eliminar:");
+            int id = Convert.ToInt32(Console.ReadLine());
+
+            // Cargar libros existentes del archivo
+            LoadBooks();
+
+            // Buscar el libro por ID
+            var bookToDelete = books.FirstOrDefault(b => b.Id == id);
+
+            if (bookToDelete == null)
+            {
+                return $"No se encontró ningún libro con el ID {id}";
+            }
+
+            // Eliminar el libro de la lista
+            books.Remove(bookToDelete);
+
+            // Guardar la lista actualizada de libros en el archivo JSON
+            SaveBooks();
+
+            return $"El libro con ID {id} ha sido eliminado correctamente";
+        }
+
+        public static string Exit()
+        {
+            Console.WriteLine("Saliendo de la aplicación...");
+            Environment.Exit(0);
+            return "Aplicación cerrada."; // Esto solo se usa por que pide un retorno string
+        }
+
+        private static void SaveBooks()
+        {
+            string json = JsonConvert.SerializeObject(books, Formatting.Indented);
+            File.WriteAllText(JsonFilePath, json);
         }
     }
 }

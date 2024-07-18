@@ -17,9 +17,9 @@ while (true)
     {
         OptionEnum.Add => BooksService.AddBook(),
         OptionEnum.Update => BooksService.UpdateBook(),
-        OptionEnum.Delete => "Eliminar Libro",
+        OptionEnum.Delete => BooksService.DeleteBook(),
         OptionEnum.Get => BooksService.GetAll(),
-        OptionEnum.Exit => "Salir",
+        OptionEnum.Exit => BooksService.Exit(),
         _ => "Opcion no valida"
     };
 
